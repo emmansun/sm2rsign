@@ -82,7 +82,7 @@ func testRSignWithThreeKeys(t *testing.T, participantRandInt ParticipantRandInt)
 	}
 }
 
-func TestRSign2WithThreeKeys(t *testing.T) {
+func TestRSignWithThreeKeys(t *testing.T) {
 	testRSignWithThreeKeys(t, SimpleParticipantRandInt)
 	testRSignWithThreeKeys(t, SM2ParticipantRandInt)
 }

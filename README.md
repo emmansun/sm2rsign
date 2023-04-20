@@ -9,3 +9,5 @@ Ring Signature Schemes Based on SM2 Digital Signature Algorithm
 - [基于SM2密码算法的环签名方案的研究与设计](https://www.wangan.com/p/7fyg8kdf13655a55)，这篇文章错漏之处比较多，并且也没说明对参与者（非签名者）产生r的方法纯粹是为了靠sm2签名算法，还是有其它考虑。
 
 其实这两个方案除了签名参与者的随机数生成方式不同，其它没有区别。本实验性实现暂未考虑环签名的ASN.1编码。
+
+不管是环签名还是可链接环签名，L={P1, P2, ..., Pn}的公钥顺序至关重要，直接影响签名、验签结果。

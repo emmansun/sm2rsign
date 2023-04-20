@@ -86,6 +86,7 @@ func randFieldElement(c elliptic.Curve, rand io.Reader) (k *big.Int, err error) 
 	}
 }
 
+// 这个hash算法没有给出明确定义
 func hash(pubs []*ecdsa.PublicKey, msg []byte, cx, cy *big.Int) *big.Int {
 	var buffer [32]byte
 	h := sm3.New()
@@ -127,16 +128,15 @@ type invertible interface {
 	Inverse(k *big.Int) *big.Int
 }
 
-// http://www.jcr.cacrnet.org.cn/CN/10.13868/j.cnki.jcr.000472
-func Sign(rand io.Reader, participantRandInt ParticipantRandInt, priv *sm2.PrivateKey, pubs []*ecdsa.PublicKey, msg []byte) ([]*big.Int, error) {
+func getPai(priv *sm2.PrivateKey, pubs []*ecdsa.PublicKey) (int, error) {
 	n := len(pubs)
 	if n < 2 {
-		return nil, errors.New("require multiple SM2 public keys")
+		return -1, errors.New("require multiple SM2 public keys")
 	}
 	var pai int = -1
 	for i := 0; i < len(pubs); i++ {
 		if pubs[i].Curve != priv.Curve {
-			return nil, errors.New("contains non SM2 public key")
+			return -1, errors.New("contains non SM2 public key")
 		}
 		if priv.PublicKey.Equal(pubs[i]) {
 			pai = i
@@ -144,15 +144,24 @@ func Sign(rand io.Reader, participantRandInt ParticipantRandInt, priv *sm2.Priva
 		}
 	}
 	if pai < 0 {
-		return nil, errors.New("does not contain public key of the private key")
+		return -1, errors.New("does not contain public key of the private key")
 	}
+	return pai, nil
+}
 
-	// Step 1
-	kPai, err := randFieldElement(priv.Curve, rand)
+// http://www.jcr.cacrnet.org.cn/CN/10.13868/j.cnki.jcr.000472
+func Sign(rand io.Reader, participantRandInt ParticipantRandInt, priv *sm2.PrivateKey, pubs []*ecdsa.PublicKey, msg []byte) ([]*big.Int, error) {
+	n := len(pubs)
+	pai, err := getPai(priv, pubs)
 	if err != nil {
 		return nil, err
 	}
-	kPaiGx, kPaiGy := priv.Curve.ScalarBaseMult(kPai.Bytes())
+	// Step 1
+	kPai, err := randFieldElement(priv, rand)
+	if err != nil {
+		return nil, err
+	}
+	kPaiGx, kPaiGy := priv.ScalarBaseMult(kPai.Bytes())
 	c := hash(pubs, msg, kPaiGx, kPaiGy)
 
 	results := make([]*big.Int, n+1)
@@ -164,11 +173,11 @@ func Sign(rand io.Reader, participantRandInt ParticipantRandInt, priv *sm2.Priva
 			return nil, err
 		}
 		results[i+1] = s
-		sx, sy := priv.Curve.ScalarBaseMult(s.Bytes())
+		sx, sy := priv.ScalarBaseMult(s.Bytes())
 		c.Add(s, c)
-		c.Mod(c, priv.Curve.Params().N)
-		cx, cy := priv.Curve.ScalarMult(pubs[i].X, pubs[i].Y, c.Bytes())
-		cx, cy = priv.Curve.Add(sx, sy, cx, cy)
+		c.Mod(c, priv.Params().N)
+		cx, cy := priv.ScalarMult(pubs[i].X, pubs[i].Y, c.Bytes())
+		cx, cy = priv.Add(sx, sy, cx, cy)
 		c = hash(pubs, msg, cx, cy)
 	}
 	results[0] = new(big.Int).Set(c)
@@ -179,11 +188,11 @@ func Sign(rand io.Reader, participantRandInt ParticipantRandInt, priv *sm2.Priva
 			return nil, err
 		}
 		results[i+1] = s
-		sx, sy := priv.Curve.ScalarBaseMult(s.Bytes())
+		sx, sy := priv.ScalarBaseMult(s.Bytes())
 		c.Add(s, c)
-		c.Mod(c, priv.Curve.Params().N)
-		cx, cy := priv.Curve.ScalarMult(pubs[i].X, pubs[i].Y, c.Bytes())
-		cx, cy = priv.Curve.Add(sx, sy, cx, cy)
+		c.Mod(c, priv.Params().N)
+		cx, cy := priv.ScalarMult(pubs[i].X, pubs[i].Y, c.Bytes())
+		cx, cy = priv.Add(sx, sy, cx, cy)
 		c = hash(pubs, msg, cx, cy)
 	}
 
@@ -228,11 +237,11 @@ func Verify(pubs []*ecdsa.PublicKey, msg []byte, signature []*big.Int) bool {
 	for i := 0; i < len(pubs); i++ {
 		pub := pubs[i]
 		s := signature[i+1]
-		sx, sy := pub.Curve.ScalarBaseMult(s.Bytes())
+		sx, sy := pub.ScalarBaseMult(s.Bytes())
 		c.Add(s, c)
-		c.Mod(c, pub.Curve.Params().N)
-		cx, cy := pub.Curve.ScalarMult(pubs[i].X, pubs[i].Y, c.Bytes())
-		cx, cy = pub.Curve.Add(sx, sy, cx, cy)
+		c.Mod(c, pub.Params().N)
+		cx, cy := pub.ScalarMult(pubs[i].X, pubs[i].Y, c.Bytes())
+		cx, cy = pub.Add(sx, sy, cx, cy)
 		c = hash(pubs, msg, cx, cy)
 	}
 
