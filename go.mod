@@ -1,6 +1,6 @@
 module github.com/emmansun/sm2rsign
 
-go 1.18
+go 1.23
 
 require github.com/emmansun/gmsm v0.29.8
 
